@@ -1,0 +1,41 @@
+files: ^src/
+exclude: ^src/dev_area/
+
+repos:
+    - repo: https://github.com/pre-commit/pre-commit-hooks
+      rev: v2.3.0
+      hooks:
+          - id: check-yaml
+          - id: end-of-file-fixer
+          - id: trailing-whitespace
+          - id: check-docstring-first
+          - id: name-tests-test
+          - id: check-added-large-files
+
+    - repo: local
+      hooks:
+          - id: black
+            name: black
+            entry: black --check
+            language: system
+            types: [python]
+
+    - repo: local
+      hooks:
+          - id: flake8
+            name: flake8
+            entry: flake8
+            language: system
+            types: [python]
+            args: ["--ignore=E501, W503, E722, E741"]
+
+    - repo: https://github.com/asottile/reorder-python-imports
+      rev: v3.12.0
+      hooks:
+          - id: reorder-python-imports
+            args:
+                [
+                    --py38-plus,
+                    --add-import,
+                    "from __future__ import annotations",
+                ]

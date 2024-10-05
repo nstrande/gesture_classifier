@@ -1,0 +1,9 @@
+black
+flake8
+pre-commit
+mediapipe
+opencv-python
+numpy
+torch
+scikit-learn
+mlflow
