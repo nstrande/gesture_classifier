@@ -2,10 +2,7 @@
 
 This project implements a comprehensive hand gesture recognition system using Python, OpenCV, MediaPipe, and PyTorch. The system includes data collection, annotation, model training, and real-time recognition of hand gestures via webcam. It has been developed and tested on Macs with M2 chips.
 
-<video width="600" controls>
-  <source src="https://github.com/nstrande/gesture_classifier/blob/main/assets/example_hand_gesture_classificer.mov" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+https://github.com/nstrande/gesture_classifier/blob/main/assets/example_hand_gesture_classificer.mov
 
 ## Features
 
