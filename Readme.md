@@ -7,6 +7,7 @@ This project implements a comprehensive hand gesture recognition system using Py
   Your browser does not support the video tag.
 </video>
 
+
 ## Features
 
 - Data collection and annotation of hand gestures

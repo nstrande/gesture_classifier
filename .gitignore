@@ -141,8 +141,8 @@ data/train_data/*.json
 !src/data
 
 # MLflow
-mlruns/
+mlruns/*
 
 # Models, but keep the src/models directory
-models/
+models/*
 !src/models
