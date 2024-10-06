@@ -19,15 +19,12 @@ Before you begin, ensure you have met the following requirements:
 
 - macOS running on an M2 chip (or compatible Apple Silicon)
 - Python 3.10+ (preferably installed via Conda)
-- OpenCV
-- MediaPipe
-- PyTorch (version compatible with Apple Silicon)
 
 ## Installation
 
 1. Clone this repository:
    ```
-   git clone https://github.com/yourusername/hand-gesture-recognition.git
+   git clone https://github.com/nstrande/gesture_classifier
    cd gesture_classifier
    ```
 
@@ -38,7 +35,7 @@ Before you begin, ensure you have met the following requirements:
    make install_dev
    ```
 
-   Note: Ensure that you're installing versions of the packages that are compatible with Apple Silicon. For PyTorch, you may need to install it separately following the instructions on the official PyTorch website for Mac M1/M2.
+   Note: Ensure that you're installing versions of the packages that are compatible with Apple Silicon.
 
 ## Usage
 
@@ -49,7 +46,7 @@ The system consists of several steps:
 To collect and annotate data for training:
 
 ```
-make run_annotator
+make generate_annotations
 ```
 
 This script will access your Mac's webcam and guide you through the process of recording different hand gestures. Follow the on-screen instructions to annotate each gesture.
@@ -68,7 +65,7 @@ make preprocess_data
 After processing raw data, train the model with:
 
 ```
-python train.py
+make train_model
 ```
 
 This script will train a PyTorch model using the collected dataset and save the trained model in the `models/` directory. The training process is optimized for M2 chip performance.
@@ -107,7 +104,7 @@ make run_main
 
 ## Customization
 
-- Use `make run_annotator` to change the number of gestures and dataset size.
+- Use `make generate_annotations` to change the number of gestures and dataset size.
 - Modify the model architecture in `src/models/moden_config/classification_nn.py` to experiment with different network structures.
 - Adjust the `Hands()` parameters in the `initialize_mediapipe()` function in `src/main.py` to change hand detection sensitivity.
 
