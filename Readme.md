@@ -125,7 +125,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Acknowledgements
 
-- [MediaPipe](https://mediapipe.dev/) for the hand detection framework.
+- [MediaPipe]([https://mediapipe.dev/](https://ai.google.dev/edge/mediapipe/solutions/guide)) for the hand detection framework.
 - [PyTorch](https://pytorch.org/) for the deep learning framework.
 - [OpenCV](https://opencv.org/) for image processing capabilities.
 - Apple for M2 chip optimizations in machine learning frameworks.
