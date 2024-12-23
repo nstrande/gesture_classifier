@@ -46,7 +46,7 @@ class GestureAnnotator:
         self.mp_drawing = mp.solutions.drawing_utils
 
         # Setup storage
-        self.sequence_folder = f"data/annotations/sequences/{gesture_label}"
+        self.sequence_folder = f"data/annotations/{gesture_label}"
         os.makedirs(self.sequence_folder, exist_ok=True)
 
     def toggle_recording(self) -> None:

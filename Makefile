@@ -28,9 +28,9 @@ generate_annotations:
 	@echo "Running annotator"
 	@python src/annotation_tools/generate_annotations_data.py
 	
-preprocess_data:
+preprocess_traning_data:
 	@echo "Preprocessing data"
-	@python src/data/preprocess_training_data.py
+	@python src/data/preprocess_traning_data.py
 
 train_model:
 	@echo "Training model"
