@@ -39,3 +39,7 @@ train_model:
 run_main:
 	@echo "Running main"
 	@python src/main.py
+
+convert_to_edge_ai:
+	@echo "Converting to Edge AI"
+	@python src/models/convert_to_edge_ai.py
