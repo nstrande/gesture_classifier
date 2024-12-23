@@ -1,158 +1,101 @@
 from __future__ import annotations
-
 import json
 from pathlib import Path
-from typing import Dict
-from typing import List
-from typing import Tuple
+from typing import Dict, List, Any
+import numpy as np
 
-
-def validate_text_file(file_path: Path) -> List[str]:
+def load_sequence_data(sequence_dir: Path) -> List[Dict[str, Any]]:
     """
-    Validate the content of a text file.
-
+    Load and validate sequence data from JSON files.
+    
     Args:
-        file_path (Path): Path to the text file.
-
+        sequence_dir: Directory containing sequence files
+        
     Returns:
-        List[str]: List of validated lines from the file.
-
-    Raises:
-        ValueError: If the file doesn't meet the expected format.
+        List of processed sequences with labels
     """
-    with file_path.open("r") as f:
-        data = f.readlines()
+    processed_data = []
+    gesture_counts = {}
+    total_sequences = 0
+    
+    print(f"\nProcessing sequences from: {sequence_dir}")
+    
+    # Iterate through gesture folders
+    for gesture_dir in sequence_dir.iterdir():
+        if not gesture_dir.is_dir():
+            continue
+            
+        gesture_label = gesture_dir.name
+        gesture_counts[gesture_label] = 0
+        
+        # Process each sequence file
+        for seq_file in gesture_dir.glob("*.json"):
+            with seq_file.open() as f:
+                sequence = json.load(f)
+                
+            # Validate sequence format
+            if not sequence or not isinstance(sequence, list):
+                print(f"Warning: Skipping invalid sequence: {seq_file}")
+                continue
+                
+            processed_data.append({
+                'label': gesture_label,
+                'sequence': sequence,
+                'length': len(sequence)
+            })
+            
+            gesture_counts[gesture_label] += 1
+            total_sequences += 1
+            
+            # Print progress
+            if total_sequences % 10 == 0:
+                print(f"Processed {total_sequences} sequences...")
+    
+    print(f"\nTotal sequences processed: {total_sequences}")
+    for gesture, count in gesture_counts.items():
+        print(f"Gesture '{gesture}': {count} sequences")
+    
+    return processed_data
 
-    if len(data) != 21:
-        raise ValueError(f"Expected 21 lines, got {len(data)}")
-
-    for line_num, line in enumerate(data, 1):
-        values = line.strip().split(",")
-        if len(values) != 3:
-            raise ValueError(f"Expected 3 values on line {line_num}, got {len(values)}")
-    return data
-
-
-def parse_float_values(data: List[str]) -> List[List[float]]:
+def preprocess_sequences(sequences: List[Dict[str, Any]], save_path: Path) -> None:
     """
-    Parse string data into lists of float values.
-
+    Preprocess sequences for LSTM training.
+    
     Args:
-        data (List[str]): List of strings to parse.
-
-    Returns:
-        List[List[float]]: Parsed float values.
-
-    Raises:
-        ValueError: If a non-float value is encountered.
+        sequences: List of loaded sequences
+        save_path: Path to save processed data
     """
-    parsed_data: List[List[float]] = []
-    for line_num, line in enumerate(data, 1):
-        values = line.strip().split(",")
-        try:
-            float_values = [float(x) for x in values]
-            parsed_data.append(float_values)
-        except ValueError:
-            raise ValueError(
-                f"Non-float value found on line {line_num}: {line.strip()}"
-            )
-    return parsed_data
+    processed_data = []
+    
+    for seq in sequences:
+        # Extract features from landmarks
+        features = []
+        for frame in seq['sequence']:
+            # Flatten landmarks to feature vector
+            frame_features = []
+            for landmark in frame:
+                frame_features.extend([landmark['x'], landmark['y'], landmark['z']])
+            features.append(frame_features)
+            
+        processed_data.append({
+            'label': seq['label'],
+            'features': features,
+            'length': len(features)
+        })
+    
+    # Save processed data
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    with save_path.open('w') as f:
+        json.dump(processed_data, f)
+    
+    print(f"\nProcessed data saved to: {save_path}")
 
-
-def process_file(
-    file_path: Path, gesture: str, output_dir: Path, total_count: int
-) -> None:
-    """
-    Process a single file and save the result as JSON.
-
-    Args:
-        file_path (Path): Path to the input file.
-        gesture (str): Gesture name.
-        output_dir (Path): Directory to save the output.
-        total_count (int): Current count of processed files.
-    """
-    validated_data = validate_text_file(file_path)
-    parsed_data = parse_float_values(validated_data)
-    data: Dict[str, List[List[float]]] = {gesture: parsed_data}
-    output_filename = output_dir / f"{total_count}.json"
-    save_as_json(data, output_filename)
-
-
-def get_gestures(input_dir: Path) -> List[str]:
-    """
-    Get a list of gesture names from the input directory.
-
-    Args:
-        input_dir (Path): Path to the input directory.
-
-    Returns:
-        List[str]: List of gesture names.
-    """
-    return [d.name for d in input_dir.iterdir() if d.is_dir()]
-
-
-def preprocess_data(input_dir: Path, output_dir: Path) -> Tuple[int, int, int]:
-    """
-    Preprocess data from the input directory and save to the output directory.
-
-    Args:
-        input_dir (Path): Path to the input directory.
-        output_dir (Path): Path to the output directory.
-
-    Returns:
-        Tuple[int, int, int]: Number of gestures, invalid samples, and total samples.
-    """
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    gestures = get_gestures(input_dir)
-    print(f"Found {len(gestures)} gestures: {gestures}")
-
-    invalid_count = 0
-    total_count = 0
-
-    for gesture in gestures:
-        gesture_dir = input_dir / gesture
-        for file_path in gesture_dir.glob("*.txt"):
-            try:
-                process_file(file_path, gesture, output_dir, total_count)
-                total_count += 1
-            except ValueError as e:
-                print(f"Invalid sample: {file_path.name}. Error: {str(e)}")
-                invalid_count += 1
-    return len(gestures), invalid_count, total_count
-
-
-def save_as_json(data: Dict[str, List[List[float]]], filename: Path) -> None:
-    """
-    Save data as a JSON file.
-
-    Args:
-        data (Dict[str, List[List[float]]]): Data to be saved.
-        filename (Path): Path to the output JSON file.
-    """
-    with filename.open("w") as f:
-        json.dump(data, f, indent=2)
-
-
-def main() -> None:
-    """
-    Main function to run the preprocessing script.
-    """
-    input_dir = Path("data/annotations/text_files")
-    output_dir = Path("data/train_data")
-
-    num_gestures, invalid_samples, total_samples = preprocess_data(
-        input_dir, output_dir
-    )
-
-    print(f"Processed data saved to {output_dir}")
-    print(f"Number of gestures: {num_gestures}")
-    print(f"Number of invalid samples: {invalid_samples}")
-    print(f"Total samples processed: {total_samples}")
-    print(
-        f"Percentage of invalid samples: {invalid_samples / total_samples * 100:.2f}%"
-    )
-
+def main():
+    base_dir = Path("data/annotations/sequences")
+    save_path = Path("data/processed/sequences.json")
+    
+    sequences = load_sequence_data(base_dir)
+    preprocess_sequences(sequences, save_path)
 
 if __name__ == "__main__":
     main()

@@ -5,4 +5,4 @@ from dataclasses import dataclass
 
 @dataclass
 class config:
-    model = "src.models.moden_config.classification_nn"
+    model = "src.models.moden_config.classification_lstm"
