@@ -1,21 +1,25 @@
 from __future__ import annotations
-import os
+
 import json
+import os
 import time
-from typing import List, Dict
+from typing import Dict
+from typing import List
+
 import cv2
 import mediapipe as mp
 import numpy as np
+
 from src.utils.webcam import Webcam
 
 
 class GestureAnnotator:
     """
     Records dynamic hand gesture sequences.
-    
+
     Records sequences of varying length using spacebar control.
     Provides real-time visual feedback during recording.
-    
+
     Attributes:
         gesture_label (str): Label for recorded gesture
         sequence_buffer (List): Current sequence buffer
@@ -29,7 +33,7 @@ class GestureAnnotator:
         self.is_recording: bool = False
         self.sequence_count: int = 0
         self.prev_frame_time = 0
-        
+
         # MediaPipe setup optimized for mobile
         self.mp_hands = mp.solutions.hands
         self.hands = self.mp_hands.Hands(
@@ -40,7 +44,7 @@ class GestureAnnotator:
             min_tracking_confidence=0.5
         )
         self.mp_drawing = mp.solutions.drawing_utils
-        
+
         # Setup storage
         self.sequence_folder = f"data/annotations/sequences/{gesture_label}"
         os.makedirs(self.sequence_folder, exist_ok=True)
@@ -56,28 +60,28 @@ class GestureAnnotator:
         """Process video frame and record landmarks if active."""
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         result = self.hands.process(rgb_frame)
-        
+
         self._draw_status(frame)
-        
+
         if result.multi_hand_landmarks:
             landmarks = result.multi_hand_landmarks[0]
             self.mp_drawing.draw_landmarks(
-                frame, 
-                landmarks, 
+                frame,
+                landmarks,
                 self.mp_hands.HAND_CONNECTIONS,
                 self.mp_drawing.DrawingSpec(color=(0,255,0), thickness=2, circle_radius=4),
                 self.mp_drawing.DrawingSpec(color=(255,255,255), thickness=2)
             )
-            
+
             if self.is_recording:
                 self._add_to_buffer(landmarks)
-        
+
         return frame
 
     def _draw_status(self, frame: np.ndarray) -> None:
         """
         Draw recording status and instructions.
-        
+
         Layout:
         Left side:
             - Recording status
@@ -92,36 +96,36 @@ class GestureAnnotator:
         current_time = time.time()
         fps = 1 / (current_time - self.prev_frame_time) if self.prev_frame_time > 0 else 0
         self.prev_frame_time = current_time
-        
+
         # Colors
         recording_color = (0, 255, 0) if self.is_recording else (0, 0, 255)
         white = (255, 255, 255)
-        
+
         # Left side information
-        cv2.putText(frame, "Status: " + ("Recording" if self.is_recording else "Ready"), 
+        cv2.putText(frame, "Status: " + ("Recording" if self.is_recording else "Ready"),
                     (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, recording_color, 2)
-        cv2.putText(frame, f"Gesture: {self.gesture_label}", 
+        cv2.putText(frame, f"Gesture: {self.gesture_label}",
                     (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, white, 2)
-        cv2.putText(frame, f"FPS: {int(fps)}", 
+        cv2.putText(frame, f"FPS: {int(fps)}",
                     (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, white, 2)
-        cv2.putText(frame, f"Recorded Sequences: {self.sequence_count}", 
+        cv2.putText(frame, f"Recorded Sequences: {self.sequence_count}",
                     (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.7, white, 2)
-        
+
         # Right side instructions
         right_margin = frame.shape[1] - 300
-        cv2.putText(frame, "Controls:", 
+        cv2.putText(frame, "Controls:",
                     (right_margin, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, white, 2)
-        cv2.putText(frame, "SPACE - Start/Stop Recording", 
+        cv2.putText(frame, "SPACE - Start/Stop Recording",
                     (right_margin, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, white, 2)
-        cv2.putText(frame, "Q - Quit", 
+        cv2.putText(frame, "Q - Quit",
                     (right_margin, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, white, 2)
-        
+
         # Recording instructions
         if self.is_recording:
-            cv2.putText(frame, "Press SPACE to stop recording", 
+            cv2.putText(frame, "Press SPACE to stop recording",
                         (right_margin, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.7, recording_color, 2)
         else:
-            cv2.putText(frame, "Press SPACE to start recording", 
+            cv2.putText(frame, "Press SPACE to start recording",
                         (right_margin, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.7, recording_color, 2)
 
     def _add_to_buffer(self, landmarks: mp.framework.formats.landmark_pb2.NormalizedLandmarkList) -> None:
@@ -132,7 +136,7 @@ class GestureAnnotator:
     def _save_sequence(self) -> None:
         """Save completed sequence to file."""
         sequence_path = os.path.join(
-            self.sequence_folder, 
+            self.sequence_folder,
             f"sequence_{self.sequence_count}.json"
         )
         with open(sequence_path, 'w') as f:
