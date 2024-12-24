@@ -8,6 +8,8 @@ from typing import Dict
 from typing import List
 from typing import Tuple
 
+from torch.nn.utils.rnn import pad_sequence
+
 import mlflow.pytorch
 import numpy as np
 import torch
@@ -18,7 +20,7 @@ from torch.utils.data import Dataset
 from torch.utils.data import random_split
 
 from src.config import config
-from src.models.utils import BalancedJSONDataset
+from src.models.utils import JSONDataset
 
 MODEL = import_module(config.model).Model
 
@@ -46,6 +48,17 @@ def prepare_data(
     Returns:
         Tuple of train, validation, and test data loaders.
     """
+    def collate_fn(batch):
+        # Sorter efter sekvens længde
+        batch.sort(key=lambda x: len(x[0]), reverse=True)
+        sequences, labels = zip(*batch)
+        
+        # Pad sekvenser
+        lengths = torch.LongTensor([len(seq) for seq in sequences])
+        padded_seqs = pad_sequence(sequences, batch_first=True)
+        
+        return padded_seqs, torch.LongTensor(labels), lengths
+    
     train_size = int(0.7 * len(dataset))
     val_size = int(0.15 * len(dataset))
     test_size = len(dataset) - train_size - val_size
@@ -54,18 +67,23 @@ def prepare_data(
         dataset, [train_size, val_size, test_size]
     )
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
     return train_loader, val_loader, test_loader
 
 
 def create_model(
-    input_size: int, hidden_sizes: List[int], num_classes: int
+        num_classes: int,
+        input_size: int,
+        hidden_size: int,
 ) -> nn.Module:
     """Create and return the neural network model."""
-    return MODEL(input_size, hidden_sizes, num_classes)
+    return MODEL(
+        num_classes,
+        input_size,
+        hidden_size,
+    )
 
 
 def train_epoch(
@@ -90,15 +108,17 @@ def train_epoch(
     """
     model.train()
     running_loss = 0.0
-    for inputs, labels in train_loader:
-        inputs, labels = inputs.to(device), labels.to(device)
 
+    for batch_idx, (data, target, lengths) in enumerate(train_loader):
+        data, target = data.to(device), target.to(device)
+        lengths = lengths.to(device)
+            
         optimizer.zero_grad()
-        outputs = model(inputs)
-        loss = criterion(outputs, labels)
+        output = model(data, lengths)
+        loss = criterion(output, target)
         loss.backward()
         optimizer.step()
-
+            
         running_loss += loss.item()
 
     return running_loss / len(train_loader)
@@ -109,6 +129,21 @@ def evaluate(model: nn.Module, data_loader: DataLoader, device: torch.device) ->
     model.eval()
     correct = 0
     total = 0
+
+    criterion = nn.CrossEntropyLoss()
+
+    with torch.no_grad():
+        for data, target, lengths in data_loader:
+            data, target = data.to(device), target.to(device)
+            lengths = lengths.to(device)
+                
+            output = model(data, lengths)
+            val_loss += criterion(output, target).item()
+                
+            _, predicted = torch.max(output.data, 1)
+            total += target.size(0)
+            correct += (predicted == target).sum().item()
+
     with torch.no_grad():
         for inputs, labels in data_loader:
             inputs, labels = inputs.to(device), labels.to(device)
@@ -202,15 +237,15 @@ def main() -> None:
     """Main function to train and evaluate the neural network model."""
     set_seed(42)
 
-    full_dataset: Dataset = BalancedJSONDataset("data/train_data")
+    full_dataset: Dataset = JSONDataset("data/processed")
     batch_size = 32
     train_loader, val_loader, test_loader = prepare_data(full_dataset, batch_size)
 
     num_classes = len(set(full_dataset.labels))
-    input_size = 21 * 3
-    hidden_sizes: List[int] = [128, 64, 32]
+    input_dim = 21 * 3
+    hidden_dim: int = 128
 
-    model = create_model(input_size, hidden_sizes, num_classes)
+    model = create_model(input_dim, hidden_dim, num_classes)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
 
@@ -223,10 +258,11 @@ def main() -> None:
     with mlflow.start_run():
         mlflow.log_params(
             {
-                "input_size": input_size,
-                "hidden_sizes": hidden_sizes,
+                "input_dim": input_dim,
+                "hidden_dim": hidden_dim,
                 "num_classes": num_classes,
                 "batch_size": batch_size,
+                "num_layers": 2,
                 "optimizer": type(optimizer).__name__,
                 "learning_rate": optimizer.param_groups[0]["lr"],
                 "weight_decay": optimizer.param_groups[0]["weight_decay"],
@@ -257,7 +293,7 @@ def main() -> None:
             "test_acc": test_acc,
             "model_state_dict": model.state_dict(),
             "input_size": input_size,
-            "hidden_sizes": hidden_sizes,
+            "hidden_dim": hidden_dim,
             "num_classes": num_classes,
             "label_to_idx": full_dataset.label_to_idx,
         }
