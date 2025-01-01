@@ -35,7 +35,7 @@ run_main:
 
 convert_to_edge_ai:
 	@echo "Converting to Edge AI"
-	@python src/models/convert_to_edge_ai.py
+	@python src/steps/convert_to_edge_ai.py
 
 
 # Test
