@@ -146,3 +146,15 @@ mlruns/*
 # Models, but keep the src/models directory
 models/*
 !src/models
+
+# VS Code settings
+.vscode/
+
+# pytest cache
+.pytest_cache/
+
+# Python egg metadata
+*.egg-info
+
+# pycache
+__pycache__/

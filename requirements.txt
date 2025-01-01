@@ -1,5 +1,4 @@
-black
-flake8
+ruff
 pre-commit
 mediapipe
 opencv-python
@@ -8,3 +7,5 @@ torch
 scikit-learn
 mlflow
 coremltools
+pytest
+seaborn
